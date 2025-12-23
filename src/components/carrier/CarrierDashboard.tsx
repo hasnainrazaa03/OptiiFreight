@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Truck, Map, Wallet, Bell, Search, MapPin, ChevronRight, Star, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Wallet, Bell, Search, MapPin, ChevronRight, Star, User } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../../lib/firebase"; // Ensure path is correct
 
 const incomeData = [
   { name: 'Week 1', income: 1200 },
@@ -9,20 +11,33 @@ const incomeData = [
   { name: 'Week 4', income: 2100 },
 ];
 
-const availableLoads = [
-  { id: 1, route: 'Chicago, IL -> Detroit, MI', weight: '2,400 lbs', price: '$850', match: '98%' },
-  { id: 2, route: 'Chicago, IL -> Milwaukee, WI', weight: '1,100 lbs', price: '$420', match: '85%' },
-  { id: 3, route: 'Indianapolis, IN -> St. Louis, MO', weight: '5,000 lbs', price: '$1,200', match: '92%' },
-];
-
 const reviews = [
   { id: 1, user: 'Global Foods Ltd.', rating: 5, comment: 'Excellent service, arrived early.', date: '2 days ago' },
   { id: 2, user: 'Tech Systems Inc.', rating: 4, comment: 'Good handling of fragile goods.', date: '1 week ago' },
-  { id: 3, user: 'Midwest Furniture', rating: 5, comment: 'Driver was very professional and communicative.', date: '2 weeks ago' }
 ];
 
 const CarrierDashboard: React.FC = () => {
   const [isOnline, setIsOnline] = useState(true);
+  const [realLoads, setRealLoads] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // --- REAL TIME LISTENER ---
+  useEffect(() => {
+    // Listen for shipments with status 'Pending'
+    const q = query(collection(db, "shipments"), where("status", "==", "Pending"));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const loads: any[] = [];
+      querySnapshot.forEach((doc) => {
+        loads.push({ id: doc.id, ...doc.data() });
+      });
+      setRealLoads(loads);
+      setLoading(false);
+    });
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen bg-brand-light p-4 sm:p-8">
@@ -65,68 +80,58 @@ const CarrierDashboard: React.FC = () => {
               </button>
             </div>
 
-            {/* Recommended Loads */}
+            {/* LIVE LOADS FEED */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                 <h3 className="font-bold text-lg text-brand-dark">Optimized Matches for You</h3>
-                 <span className="text-xs font-bold text-brand-green bg-green-50 px-2 py-1 rounded">AI Matched</span>
+                 <h3 className="font-bold text-lg text-brand-dark">Live Shipment Requests</h3>
+                 <span className="text-xs font-bold text-brand-green bg-green-50 px-2 py-1 rounded">Real-Time</span>
                </div>
+               
                <div className="divide-y divide-gray-100">
-                 {availableLoads.map((load) => (
-                   <div key={load.id} className="p-6 hover:bg-gray-50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                     <div className="flex items-start gap-4">
-                       <div className="p-3 bg-brand-light rounded-lg text-brand-dark">
-                         <MapPin className="w-6 h-6" />
-                       </div>
-                       <div>
-                         <h4 className="font-bold text-brand-dark">{load.route}</h4>
-                         <p className="text-sm text-gray-500 mt-1">{load.weight} • Partial Load</p>
-                         <div className="mt-2 flex gap-2">
-                            <span className="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Verified Shipper</span>
-                         </div>
-                       </div>
-                     </div>
-                     <div className="flex items-center gap-6">
-                       <div className="text-right">
-                         <p className="text-lg font-bold text-brand-dark">{load.price}</p>
-                         <p className="text-xs text-brand-green font-bold">{load.match} Match</p>
-                       </div>
-                       <button className="bg-brand-orange text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
-                         Accept
-                       </button>
-                     </div>
-                   </div>
-                 ))}
+                 {loading ? (
+                    <div className="p-8 text-center text-gray-400">Loading live loads...</div>
+                 ) : realLoads.length === 0 ? (
+                    <div className="p-8 text-center">
+                        <p className="text-gray-500 mb-2">No active shipments found right now.</p>
+                        <p className="text-sm text-gray-400">New requests will appear here instantly.</p>
+                    </div>
+                 ) : (
+                    realLoads.map((load) => (
+                      <div key={load.id} className="p-6 hover:bg-gray-50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="p-3 bg-brand-light rounded-lg text-brand-dark">
+                            <MapPin className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-brand-dark">Zip {load.originZip} → Zip {load.destZip}</h4>
+                            <p className="text-sm text-gray-500 mt-1">{load.weight} lbs • {load.cargoType}</p>
+                            <div className="mt-2 flex gap-2">
+                               <span className="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Verified Shipper</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-brand-dark">
+                              ${Math.round(load.finalCost || load.estimatedCost || 0)}
+                            </p>
+                            <p className="text-xs text-brand-green font-bold">Est. Payout</p>
+                          </div>
+                          <button className="bg-brand-orange text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
+                            Accept Load
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                 )}
                </div>
+               
                <div className="p-4 bg-gray-50 text-center">
                  <button className="text-brand-dark font-semibold text-sm hover:text-blue-700 flex items-center justify-center gap-1">
                    View All Loads <ChevronRight className="w-4 h-4" />
                  </button>
                </div>
             </div>
-
-            {/* Active Trips Visualization (Placeholder) */}
-            <div className="bg-brand-dark rounded-xl shadow-sm p-6 text-white relative overflow-hidden">
-              <div className="relative z-10">
-                <h3 className="font-bold text-lg mb-2">Current Trip: Atlanta, GA → Nashville, TN</h3>
-                <div className="flex items-center gap-4 text-sm text-blue-200 mb-6">
-                  <span><Truck className="w-4 h-4 inline mr-1"/> 65% Full</span>
-                  <span><Map className="w-4 h-4 inline mr-1"/> 2 Stops Remaining</span>
-                </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-lg p-4">
-                  <div className="flex justify-between text-sm mb-2">
-                    <span>Progress</span>
-                    <span>180 mi / 250 mi</span>
-                  </div>
-                  <div className="w-full bg-blue-900 rounded-full h-2">
-                    <div className="bg-brand-orange h-2 rounded-full" style={{width: '72%'}}></div>
-                  </div>
-                </div>
-              </div>
-              {/* Abstract Map Pattern BG */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full mix-blend-overlay filter blur-3xl opacity-20 -translate-y-1/2 translate-x-1/2"></div>
-            </div>
-
           </div>
 
           {/* Sidebar */}
@@ -142,20 +147,14 @@ const CarrierDashboard: React.FC = () => {
                    <h3 className="text-xl font-bold text-brand-dark">$6,600</h3>
                  </div>
                </div>
-               <div className="h-48">
-                 <ResponsiveContainer width="100%" height="100%">
+               <div className="h-48" style={{ height: 300, width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={incomeData}>
-                      <defs>
-                        <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#4CAF50" stopOpacity={0.2}/>
-                          <stop offset="95%" stopColor="#4CAF50" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0"/>
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10}} hide/>
                       <YAxis hide/>
                       <Tooltip formatter={(value) => [`$${value}`, 'Income']} />
-                      <Area type="monotone" dataKey="income" stroke="#4CAF50" fillOpacity={1} fill="url(#colorIncome)" />
+                      <Area type="monotone" dataKey="income" stroke="#4CAF50" fillOpacity={1} fill="#4CAF50" />
                     </AreaChart>
                  </ResponsiveContainer>
                </div>
@@ -165,7 +164,6 @@ const CarrierDashboard: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-gray-900">Recent Customer Reviews</h3>
-                <span className="text-xs text-brand-orange font-semibold">View All</span>
               </div>
               
               <div className="space-y-4">
@@ -184,7 +182,6 @@ const CarrierDashboard: React.FC = () => {
                       </div>
                     </div>
                     <p className="text-xs text-gray-600 italic">"{review.comment}"</p>
-                    <p className="text-[10px] text-gray-400 mt-1">{review.date}</p>
                   </div>
                 ))}
               </div>

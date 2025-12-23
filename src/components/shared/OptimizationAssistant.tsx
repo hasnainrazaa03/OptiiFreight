@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, Bot } from 'lucide-react';
-import { chatWithAssistant } from '../services/geminiService';
+import { X, Send, Bot } from 'lucide-react';
+import { chatWithAssistant } from '../../services/geminiService';
 
 const OptimizationAssistant: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
