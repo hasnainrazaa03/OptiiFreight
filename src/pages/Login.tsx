@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../lib/firebase'; // Import googleProvider
+import { auth, googleProvider } from '../lib/firebase';
 import { Truck, ArrowLeft, Lock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext'; // <--- Import this
 
 const Login = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { setUserRole } = useAuth(); // <--- Get the setter from context
+
   const initialType = searchParams.get('type') === 'carrier' ? 'carrier' : 'business';
   
   const [activeTab, setActiveTab] = useState<'business' | 'carrier'>(initialType);
@@ -16,7 +19,15 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Handle traditional Email/Password
+  // Helper to handle success
+  const handleSuccess = () => {
+      // 1. TELL THE APP WHICH ROLE WE ARE
+      setUserRole(activeTab);
+
+      // 2. Navigate
+      navigate(activeTab === 'business' ? '/business' : '/carrier');
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -27,7 +38,7 @@ const Login = () => {
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
-      navigate(activeTab === 'business' ? '/business' : '/carrier');
+      handleSuccess(); // <--- Use helper
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -35,12 +46,10 @@ const Login = () => {
     }
   };
 
-  // Handle Google Login
   const handleGoogleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      // Redirect based on which tab was active
-      navigate(activeTab === 'business' ? '/business' : '/carrier');
+      handleSuccess(); // <--- Use helper
     } catch (err: any) {
       setError("Google Sign-In failed. Please try again.");
       console.error(err);
@@ -51,7 +60,7 @@ const Login = () => {
     <div className="min-h-screen bg-brand-light flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-md rounded-xl shadow-xl overflow-hidden border border-gray-100">
         
-        {/* Header (Same as before) */}
+        {/* Header */}
         <div className="p-4 border-b border-gray-100 flex items-center">
             <Link to="/" className="text-gray-400 hover:text-brand-dark transition-colors"><ArrowLeft className="w-5 h-5"/></Link>
             <div className="ml-auto mr-auto pr-5 flex items-center gap-2">
@@ -74,7 +83,6 @@ const Login = () => {
             <form onSubmit={handleAuth} className="space-y-4">
                 {error && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{error}</div>}
                 
-                {/* Google Button */}
                 <button 
                   type="button"
                   onClick={handleGoogleLogin}

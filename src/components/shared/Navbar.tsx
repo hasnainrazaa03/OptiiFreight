@@ -1,24 +1,22 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Truck, Menu, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Truck, Menu, X, Plus, Search, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { auth } from '../../lib/firebase';
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const location = useLocation();
   const navigate = useNavigate();
-  const { user, userRole } = useAuth(); // Access global auth state
+  const { user, userRole } = useAuth(); // Get global auth state
 
-  const isDashboard = location.pathname.includes('/business') || location.pathname.includes('/carrier');
-  const isLoginPage = location.pathname === '/login';
+  // Helper to determine where "Dashboard" goes
+  const dashboardLink = userRole === 'carrier' ? '/carrier' : '/business';
 
   const handleLogout = async () => {
     await auth.signOut();
     navigate('/');
+    setIsOpen(false);
   };
-
-  if (isLoginPage) return null; // Hide navbar on login page
 
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -36,33 +34,47 @@ const Navbar: React.FC = () => {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {!isDashboard ? (
-              // Public Navigation
+            
+            {/* LOGGED OUT STATE */}
+            {!user ? (
               <>
                 <Link to="/login?type=business" className="text-gray-600 hover:text-brand-dark font-medium">For Business</Link>
                 <Link to="/login?type=carrier" className="text-gray-600 hover:text-brand-dark font-medium">For Carriers</Link>
                 <Link to="/pricing" className="text-gray-600 hover:text-brand-dark font-medium">Pricing</Link>
                 <Link to="/about" className="text-gray-600 hover:text-brand-dark font-medium">About</Link>
-                {user ? (
-                   <button onClick={handleLogout} className="bg-brand-dark text-white px-6 py-2 rounded-full font-medium hover:bg-blue-900 transition-colors">
-                     Logout
-                   </button>
-                ) : (
-                   <Link to="/login" className="bg-brand-dark text-white px-6 py-2 rounded-full font-medium hover:bg-blue-900 transition-colors">
-                     Login
-                   </Link>
-                )}
+                <Link to="/login" className="bg-brand-dark text-white px-6 py-2 rounded-full font-medium hover:bg-blue-900 transition-colors">
+                  Login
+                </Link>
               </>
             ) : (
-               // Dashboard Navigation
-               <div className="flex items-center gap-4">
-                 <span className="text-sm text-gray-500">
-                    Logged in as {userRole === 'business' ? 'Shipper' : 'Carrier'}
-                 </span>
-                 <button onClick={handleLogout} className="text-sm font-semibold text-brand-orange hover:text-red-600">
-                    Logout
-                 </button>
-               </div>
+              /* LOGGED IN STATE */
+              <>
+                <Link to={dashboardLink} className="text-gray-600 hover:text-brand-dark font-medium flex items-center gap-2">
+                  <LayoutDashboard className="w-4 h-4" /> My Dashboard
+                </Link>
+
+                {/* Dynamic Action Button based on Role */}
+                {userRole === 'business' ? (
+                  <Link to="/business/create" className="text-gray-600 hover:text-brand-dark font-medium flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-brand-orange" /> New Shipment
+                  </Link>
+                ) : (
+                  <Link to="/carrier" className="text-gray-600 hover:text-brand-dark font-medium flex items-center gap-2">
+                     <Search className="w-4 h-4 text-brand-green" /> Find Loads
+                  </Link>
+                )}
+
+                <div className="h-6 w-px bg-gray-300 mx-2"></div>
+
+                <div className="flex items-center gap-4">
+                   <span className="text-sm text-gray-500 font-medium">
+                      {userRole === 'business' ? 'Shipper' : 'Carrier'} Account
+                   </span>
+                   <button onClick={handleLogout} className="text-sm font-bold text-red-500 hover:text-red-700">
+                      Logout
+                   </button>
+                </div>
+              </>
             )}
           </div>
 
@@ -77,12 +89,28 @@ const Navbar: React.FC = () => {
 
       {/* Mobile Menu Dropdown */}
       {isOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-             <Link to="/business" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brand-dark hover:bg-gray-50">For Business</Link>
-             <Link to="/carrier" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brand-dark hover:bg-gray-50">For Carriers</Link>
-             <Link to="/pricing" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brand-dark hover:bg-gray-50">Pricing</Link>
-             <Link to="/login" className="block w-full text-center mt-4 bg-brand-dark text-white px-3 py-3 rounded-lg font-medium">Login</Link>
+        <div className="md:hidden bg-white border-t border-gray-100 shadow-xl">
+          <div className="px-4 pt-2 pb-4 space-y-2">
+             {!user ? (
+               <>
+                 <Link to="/login?type=business" className="block py-2 text-base font-medium text-gray-700">For Business</Link>
+                 <Link to="/login?type=carrier" className="block py-2 text-base font-medium text-gray-700">For Carriers</Link>
+                 <Link to="/pricing" className="block py-2 text-base font-medium text-gray-700">Pricing</Link>
+                 <Link to="/login" className="block w-full text-center mt-4 bg-brand-dark text-white py-3 rounded-lg font-bold">Login</Link>
+               </>
+             ) : (
+               <>
+                 <Link to={dashboardLink} className="block py-2 text-base font-bold text-brand-dark">My Dashboard</Link>
+                 {userRole === 'business' ? (
+                    <Link to="/business/create" className="block py-2 text-base font-medium text-gray-600">Create New Shipment</Link>
+                 ) : (
+                    <Link to="/carrier" className="block py-2 text-base font-medium text-gray-600">Find Loads</Link>
+                 )}
+                 <button onClick={handleLogout} className="block w-full text-left py-2 text-base font-medium text-red-500 mt-2 border-t border-gray-100">
+                    Logout
+                 </button>
+               </>
+             )}
           </div>
         </div>
       )}
