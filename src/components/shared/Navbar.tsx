@@ -40,6 +40,7 @@ const Navbar: React.FC = () => {
               <>
                 <Link to="/login?type=business" className="text-gray-600 hover:text-brand-dark font-medium">For Business</Link>
                 <Link to="/login?type=carrier" className="text-gray-600 hover:text-brand-dark font-medium">For Carriers</Link>
+                <Link to="/resources" className="text-gray-600 hover:text-brand-dark font-medium">Resources</Link>
                 <Link to="/pricing" className="text-gray-600 hover:text-brand-dark font-medium">Pricing</Link>
                 <Link to="/about" className="text-gray-600 hover:text-brand-dark font-medium">About</Link>
                 <Link to="/login" className="bg-brand-dark text-white px-6 py-2 rounded-full font-medium hover:bg-blue-900 transition-colors">
