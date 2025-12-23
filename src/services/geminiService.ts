@@ -1,6 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+if (!apiKey) {
+  console.error("Missing Gemini API Key in environment variables!");
+}
+
+const ai = new GoogleGenAI({ apiKey: apiKey || "dummy-key-to-prevent-crash" });
 
 export const optimizeRouteExplanation = async (
   origin: string, 
@@ -8,6 +14,8 @@ export const optimizeRouteExplanation = async (
   stops: string[]
 ): Promise<string> => {
   try {
+    if (!apiKey) return "Optimization AI not configured."; // Safety check
+
     const prompt = `
       As an expert logistics AI for OptiiFreight (US Market), explain how you would optimize a partial load shipment 
       from ${origin} to ${destination} potentially sharing space with stops at ${stops.join(', ')}.
@@ -21,7 +29,7 @@ export const optimizeRouteExplanation = async (
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash', // Updated to latest stable model
       contents: prompt,
     });
 
@@ -34,8 +42,10 @@ export const optimizeRouteExplanation = async (
 
 export const chatWithAssistant = async (message: string): Promise<string> => {
     try {
+        if (!apiKey) return "I am currently offline (API Key missing).";
+
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-2.0-flash',
             contents: message,
             config: {
                 systemInstruction: "You are 'OptiiBot', a helpful logistics assistant for OptiiFreight in the United States. You help businesses save money on freight and carriers fill their trucks. Use USD and Imperial units (lbs, miles). Be concise and professional."
