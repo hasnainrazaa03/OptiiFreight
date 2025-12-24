@@ -6,18 +6,6 @@ import { db } from "../../lib/firebase";
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 
-const incomeData = [
-  { name: 'Week 1', income: 1200 },
-  { name: 'Week 2', income: 1800 },
-  { name: 'Week 3', income: 1500 },
-  { name: 'Week 4', income: 2100 },
-];
-
-const reviews = [
-  { id: 1, user: 'Global Foods Ltd.', rating: 5, comment: 'Excellent service, arrived early.', date: '2 days ago' },
-  { id: 2, user: 'Tech Systems Inc.', rating: 4, comment: 'Good handling of fragile goods.', date: '1 week ago' },
-];
-
 const CarrierDashboard: React.FC = () => {
   const { user } = useAuth();
   
@@ -32,6 +20,7 @@ const CarrierDashboard: React.FC = () => {
   const [carrierData, setCarrierData] = useState<any>(null);
   const [earningsData, setEarningsData] = useState<any[]>([{ name: 'Start', income: 0 }]);
   const [totalEarnings, setTotalEarnings] = useState(0);
+  const [reviews, setReviews] = useState<any[]>([]); // State for Real Reviews
 
   // 1. Fetch Carrier Profile & Status
   useEffect(() => {
@@ -87,7 +76,25 @@ const CarrierDashboard: React.FC = () => {
     return () => unsubscribe();
   }, [user]);
 
-  // 3. Fetch Available Loads
+  // 3. Fetch Real Reviews
+  useEffect(() => {
+    if (!user) return;
+
+    // Query reviews for this specific carrier
+    const q = query(collection(db, "reviews"), where("carrierId", "==", user.uid));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedReviews: any[] = [];
+      snapshot.forEach((doc) => {
+          fetchedReviews.push({ id: doc.id, ...doc.data() });
+      });
+      setReviews(fetchedReviews);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // 4. Fetch Available Loads
   useEffect(() => {
     if (!isVerified) return; 
 
@@ -142,6 +149,7 @@ const CarrierDashboard: React.FC = () => {
             </div>
         )}
 
+        {/* HEADER SECTION */}
         <header className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
           <div>
             <h1 className="text-2xl font-bold text-brand-dark font-heading">Carrier Portal</h1>
@@ -191,7 +199,6 @@ const CarrierDashboard: React.FC = () => {
 
             {/* LIVE LOADS FEED */}
             {isVerified ? (
-                // --- VERIFIED VIEW ---
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                    <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                      <h3 className="font-bold text-lg text-brand-dark">Live Shipment Requests</h3>
@@ -238,10 +245,8 @@ const CarrierDashboard: React.FC = () => {
                    </div>
                 </div>
             ) : (
-                // --- UNVERIFIED / LOCKED VIEW ---
                 <div className="space-y-6">
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden h-96">
-                        
                         {/* The Overlay */}
                         <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-center p-6">
                             <div className="bg-gray-100 p-4 rounded-full mb-4 ring-8 ring-gray-50">
@@ -312,16 +317,33 @@ const CarrierDashboard: React.FC = () => {
                </div>
             </div>
 
-            {/* Reviews (Static for now, but linked to logic) */}
+            {/* Reviews (Real-Time) */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="font-bold text-gray-900 mb-4">Reviews</h3>
-              {/* If no rating, show empty state */}
-              {(!carrierData?.rating || carrierData?.rating === 0) ? (
+              {reviews.length === 0 ? (
+                  // Fallback: Empty State
                   <p className="text-sm text-gray-500 italic">No reviews yet. Complete your first trip to get rated!</p>
               ) : (
+                  // Map Real Reviews
                   <div className="space-y-4">
-                      {/* Map reviews here when we have them in DB */}
-                      <p className="text-sm text-gray-500">Reviews will appear here.</p>
+                     {reviews.map((review) => (
+                        <div key={review.id} className="border-b border-gray-50 last:border-0 pb-3 last:pb-0">
+                            <div className="flex justify-between items-start mb-1">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+                                        <User className="w-3 h-3 text-gray-500" />
+                                    </div>
+                                    <span className="text-sm font-bold text-brand-dark">{review.user || "Shipper"}</span>
+                                </div>
+                                <div className="flex items-center">
+                                    <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                                    <span className="text-xs font-bold ml-1">{review.rating}.0</span>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-600 italic">"{review.comment}"</p>
+                            <p className="text-[10px] text-gray-400 mt-1">{review.date}</p>
+                        </div>
+                     ))}
                   </div>
               )}
             </div>

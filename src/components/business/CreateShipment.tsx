@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Box } from 'lucide-react';
+import { calculateDistance } from '../../utils/distance';
 
 const CreateShipment: React.FC = () => {
   const navigate = useNavigate();
@@ -25,22 +26,18 @@ const CreateShipment: React.FC = () => {
     e.preventDefault();
     setLoading(true);
 
-    // MOCK LOGIC: Calculate estimated cost purely for display
-    // In a real app, you might fetch a quote from an API here without saving to DB
-    const weightCost = parseFloat(formData.weight) * 0.10; 
-    const estimatedCost = 250 + weightCost;
+    const miles = calculateDistance(formData.originZip, formData.destZip);
 
     // JUST NAVIGATE. Do not save to DB yet.
     // We pass the raw form data to the next page via React Router state.
     setTimeout(() => {
         navigate('/business/trucks', { 
             state: { 
-              shipmentData: formData,
-              estimatedCost: estimatedCost
+              shipmentData: { ...formData, distance: miles }, // Save miles to state
             } 
         });
         setLoading(false);
-    }, 500); // Small fake delay for UX
+    }, 500);
   };
 
   return (

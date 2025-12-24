@@ -8,14 +8,11 @@ const TruckSelection: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const { shipmentData, estimatedCost } = location.state || {};
+  const { shipmentData } = location.state || {};
   const [trucks, setTrucks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // MOCK DISTANCE CALCULATION
-  // Since we don't have Google Maps API yet, we infer miles from the estimated cost
-  // estimatedCost = $400 roughly implies 200 miles @ $2/mile
-  const estimatedMiles = (estimatedCost || 400) / 2;
+  const miles = shipmentData?.distance || 0;
 
   useEffect(() => {
     const fetchTrucks = async () => {
@@ -28,15 +25,10 @@ const TruckSelection: React.FC = () => {
         
         querySnapshot.forEach((doc) => {
           const data = doc.data();
+          const rate = data.baseRate || 2.0;
           
-          // 1. Calculate Quote: (Distance * Base Rate)
-          // If baseRate is missing, default to 2.0
-          const rate = data.baseRate || data.ratePerMile || 2.0;
-          const calculatedTotal = Math.round(estimatedMiles * rate);
-          
-          // 2. Calculate Transit Time: (Miles / 500 miles/day)
-          const days = Math.ceil(estimatedMiles / 500);
-          const transitDisplay = data.transitTime || `${days} Day${days > 1 ? 's' : ''}`;
+          // REAL MATH: Miles * Truck Rate
+          const quote = Math.round(miles * rate);
 
           fetchedTrucks.push({
             id: doc.id,
@@ -44,8 +36,8 @@ const TruckSelection: React.FC = () => {
             // FIX NAME: Use companyName first
             name: data.companyName || data.name || "Unknown Carrier", 
             ratePerMile: rate,
-            transitTime: transitDisplay,
-            total: calculatedTotal < 200 ? 200 : calculatedTotal,
+            transitTime: `${Math.ceil(miles / 500)} Days`,
+            total: quote,
             
             // Fix Rating Display
             rating: data.rating || 0,
@@ -67,7 +59,7 @@ const TruckSelection: React.FC = () => {
     };
 
     fetchTrucks();
-  }, [estimatedMiles]);
+  }, [miles]);
 
   return (
     <div className="min-h-screen bg-brand-light p-4 sm:p-8">
