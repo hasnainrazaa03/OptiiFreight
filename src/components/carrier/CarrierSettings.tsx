@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { User, Truck, CreditCard, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Truck, CreditCard, Save, CheckCircle, AlertCircle, FileText, Upload, Check } from 'lucide-react';
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { db } from "../../lib/firebase";
+import { db, auth } from "../../lib/firebase";
 import { useAuth } from '../../context/AuthContext';
 
 const CarrierSettings: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'fleet' | 'payments'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'fleet' | 'payments' | 'documents'>('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -33,6 +33,15 @@ const CarrierSettings: React.FC = () => {
     accountNumber: '',
     routingNumber: ''
   });
+
+  // New Document State
+  const [docUrls, setDocUrls] = useState({
+    insuranceUrl: '',
+    cdlUrl: ''
+  });
+  
+  // Upload Loading States
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   // 1. Fetch Data
   useEffect(() => {
@@ -62,6 +71,11 @@ const CarrierSettings: React.FC = () => {
             accountNumber: data.accountNumber || '',
             routingNumber: data.routingNumber || ''
           });
+          // Load existing doc URLs
+          setDocUrls({
+            insuranceUrl: data.insuranceUrl || '',
+            cdlUrl: data.cdlUrl || ''
+          });
         }
       } catch (err) {
         console.error("Error fetching settings:", err);
@@ -72,16 +86,36 @@ const CarrierSettings: React.FC = () => {
     fetchProfile();
   }, [user]);
 
-  // 2. Strict Validation Logic
+  // 2. Mock File Upload Handler
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'insuranceUrl' | 'cdlUrl') => {
+      if (!e.target.files?.[0]) return;
+      
+      setUploadingField(field);
+      
+      // Simulate Network Delay
+      setTimeout(() => {
+          // In real app: Upload to Firebase Storage here
+          const mockUrl = "https://via.placeholder.com/150?text=VERIFIED+DOC";
+          
+          setDocUrls(prev => ({ ...prev, [field]: mockUrl }));
+          setUploadingField(null);
+          alert(`${field === 'insuranceUrl' ? 'Insurance' : 'CDL'} uploaded successfully!`);
+      }, 1500);
+  };
+
+  // 3. Strict Validation Logic
   const validateForm = () => {
     if (!profileData.dotNumber) return "DOT Number is required for verification.";
     if (!profileData.companyName) return "Company Name is required.";
     if (!fleetData.baseRate || fleetData.baseRate <= 0) return "Please set a valid Base Rate ($/mile).";
     if (!paymentData.accountNumber || !paymentData.routingNumber) return "Payment details are required for verification.";
+    // New Check: Documents
+    if (!docUrls.insuranceUrl || !docUrls.cdlUrl) return "Please upload both Insurance and CDL documents.";
+    
     return null; // No errors
   };
 
-  // 3. Save Logic
+  // 4. Save Logic
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
@@ -89,7 +123,6 @@ const CarrierSettings: React.FC = () => {
     setErrorMsg('');
 
     try {
-      // Check if profile is complete enough to be "Ready for Verification"
       const validationError = validateForm();
       const isComplete = validationError === null;
 
@@ -99,16 +132,15 @@ const CarrierSettings: React.FC = () => {
         ...profileData,
         ...fleetData,
         ...paymentData,
-        // Only mark complete if ALL fields are present
+        ...docUrls, // Save document URLs
         profileComplete: isComplete, 
         updatedAt: new Date().toISOString()
       });
 
       if (isComplete) {
-        setSuccessMsg('Profile updated! You are now pending verification.');
+        setSuccessMsg('Profile complete! Documents submitted for verification.');
       } else {
-        // Save worked, but not complete yet
-        setSuccessMsg('Progress saved. Please fill ALL sections to request verification.');
+        setSuccessMsg('Progress saved. Please upload all documents to request verification.');
       }
       
       setTimeout(() => setSuccessMsg(''), 4000);
@@ -138,17 +170,30 @@ const CarrierSettings: React.FC = () => {
               <button onClick={() => setActiveTab('fleet')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'fleet' ? 'bg-white text-brand-orange shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}>
                 <Truck className="w-4 h-4" /> Fleet Details
               </button>
+              <button onClick={() => setActiveTab('documents')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'documents' ? 'bg-white text-brand-orange shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}>
+                <FileText className="w-4 h-4" /> Documents
+              </button>
               <button onClick={() => setActiveTab('payments')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === 'payments' ? 'bg-white text-brand-orange shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}>
                 <CreditCard className="w-4 h-4" /> Payment Methods
               </button>
             </nav>
-            {/* Status Indicator */}
+            
+            {/* Requirement Checklist */}
             <div className="mt-8 p-4 bg-blue-50 rounded-lg text-xs text-blue-800">
-               <p className="font-bold mb-1">Requirements:</p>
-               <ul className="list-disc list-inside space-y-1">
-                 <li className={profileData.dotNumber ? 'text-green-600' : 'text-red-500'}>DOT Number</li>
-                 <li className={fleetData.baseRate > 0 ? 'text-green-600' : 'text-red-500'}>Base Rate</li>
-                 <li className={paymentData.accountNumber ? 'text-green-600' : 'text-red-500'}>Bank Details</li>
+               <p className="font-bold mb-2">Requirements:</p>
+               <ul className="space-y-1">
+                 <li className={`flex items-center gap-2 ${profileData.dotNumber ? 'text-green-600' : 'text-red-500'}`}>
+                    {profileData.dotNumber ? <CheckCircle className="w-3 h-3"/> : <div className="w-3 h-3 border border-red-400 rounded-full"></div>} DOT Number
+                 </li>
+                 <li className={`flex items-center gap-2 ${fleetData.baseRate > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    {fleetData.baseRate > 0 ? <CheckCircle className="w-3 h-3"/> : <div className="w-3 h-3 border border-red-400 rounded-full"></div>} Base Rate
+                 </li>
+                 <li className={`flex items-center gap-2 ${docUrls.insuranceUrl ? 'text-green-600' : 'text-red-500'}`}>
+                    {docUrls.insuranceUrl ? <CheckCircle className="w-3 h-3"/> : <div className="w-3 h-3 border border-red-400 rounded-full"></div>} Insurance
+                 </li>
+                 <li className={`flex items-center gap-2 ${docUrls.cdlUrl ? 'text-green-600' : 'text-red-500'}`}>
+                    {docUrls.cdlUrl ? <CheckCircle className="w-3 h-3"/> : <div className="w-3 h-3 border border-red-400 rounded-full"></div>} CDL
+                 </li>
                </ul>
             </div>
           </div>
@@ -178,7 +223,7 @@ const CarrierSettings: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">USDOT Number *</label>
-                    <input value={profileData.dotNumber} onChange={(e) => setProfileData({...profileData, dotNumber: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-yellow-50" placeholder="Required for verification" />
+                    <input value={profileData.dotNumber} onChange={(e) => setProfileData({...profileData, dotNumber: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-yellow-50" placeholder="Required" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
@@ -209,15 +254,6 @@ const CarrierSettings: React.FC = () => {
                     <input type="number" value={fleetData.fleetSize} onChange={(e) => setFleetData({...fleetData, fleetSize: parseInt(e.target.value)})} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Primary Equipment</label>
-                    <select value={fleetData.equipmentType} onChange={(e) => setFleetData({...fleetData, equipmentType: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2">
-                      <option>Dry Van (53')</option>
-                      <option>Reefer</option>
-                      <option>Flatbed</option>
-                      <option>Box Truck</option>
-                    </select>
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Base Rate ($/mile) *</label>
                     <input type="number" step="0.01" value={fleetData.baseRate} onChange={(e) => setFleetData({...fleetData, baseRate: parseFloat(e.target.value)})} className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-yellow-50" />
                   </div>
@@ -225,17 +261,68 @@ const CarrierSettings: React.FC = () => {
               </div>
             )}
 
+            {/* TAB: DOCUMENTS (NEW) */}
+            {activeTab === 'documents' && (
+                <div className="space-y-6 animate-in fade-in">
+                    <h2 className="text-xl font-bold text-gray-800">Verification Documents</h2>
+                    <p className="text-sm text-gray-500">Upload clear copies of your documents. These are required for verification.</p>
+                    
+                    {/* Insurance Card */}
+                    <div className="border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className={`p-3 rounded-full ${docUrls.insuranceUrl ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                                {docUrls.insuranceUrl ? <Check className="w-6 h-6"/> : <FileText className="w-6 h-6"/>}
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-gray-800">Insurance Certificate</h4>
+                                <p className="text-xs text-gray-500">{docUrls.insuranceUrl ? 'Uploaded successfully' : 'Liability & Cargo Insurance'}</p>
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <input 
+                                type="file" 
+                                accept="image/*,.pdf"
+                                onChange={(e) => handleFileUpload(e, 'insuranceUrl')}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                disabled={uploadingField === 'insuranceUrl'}
+                            />
+                            <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
+                                {uploadingField === 'insuranceUrl' ? 'Uploading...' : (docUrls.insuranceUrl ? 'Replace' : 'Upload')}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* CDL Card */}
+                    <div className="border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className={`p-3 rounded-full ${docUrls.cdlUrl ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                                {docUrls.cdlUrl ? <Check className="w-6 h-6"/> : <Truck className="w-6 h-6"/>}
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-gray-800">CDL / Driver License</h4>
+                                <p className="text-xs text-gray-500">{docUrls.cdlUrl ? 'Uploaded successfully' : 'Valid Commercial License'}</p>
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <input 
+                                type="file" 
+                                accept="image/*,.pdf"
+                                onChange={(e) => handleFileUpload(e, 'cdlUrl')}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                disabled={uploadingField === 'cdlUrl'}
+                            />
+                            <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
+                                {uploadingField === 'cdlUrl' ? 'Uploading...' : (docUrls.cdlUrl ? 'Replace' : 'Upload')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* TAB: PAYMENTS */}
             {activeTab === 'payments' && (
                <div className="space-y-6 animate-in fade-in">
                  <h2 className="text-xl font-bold text-gray-800">Payout Preferences</h2>
-                 <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg flex gap-3 mb-6">
-                    <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                    <p className="text-sm text-blue-800">
-                      Payment details are required to verify your identity and enable payouts.
-                    </p>
-                 </div>
-                 
                  <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Bank Name</label>
