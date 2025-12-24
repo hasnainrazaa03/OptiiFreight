@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, Bell, Search, MapPin, ChevronRight, Star, User, AlertTriangle, Lock, Activity } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { collection, query, where, onSnapshot, doc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
@@ -110,6 +110,25 @@ const CarrierDashboard: React.FC = () => {
 
     return () => unsubscribe();
   }, [isVerified]);
+
+  const handleAcceptLoad = async (loadId: string) => {
+    if (!user || !isVerified) return;
+
+    const confirm = window.confirm("Are you sure you want to commit to this load?");
+    if (!confirm) return;
+
+    try {
+        await updateDoc(doc(db, "shipments", loadId), {
+            status: 'Accepted',
+            carrierId: user.uid,
+            acceptedAt: new Date().toISOString()
+        });
+        alert("Load Accepted! Check 'My Trips' to manage it.");
+    } catch (error) {
+        console.error("Error accepting load:", error);
+        alert("Failed to accept load.");
+    }
+};
 
   return (
     <div className="min-h-screen bg-brand-light p-4 sm:p-8">
@@ -235,7 +254,10 @@ const CarrierDashboard: React.FC = () => {
                                 </p>
                                 <p className="text-xs text-brand-green font-bold">Payout</p>
                               </div>
-                              <button onClick={() => alert("Load Accepted! (Demo)")} className="bg-brand-orange text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
+                              <button 
+                                onClick={() => handleAcceptLoad(load.id)} 
+                                className="bg-brand-orange text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors"
+                              >
                                 Accept Load
                               </button>
                             </div>

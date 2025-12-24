@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Truck, Menu, X, Plus, Search, LayoutDashboard } from 'lucide-react';
+import { Truck, Menu, X, Plus, Search, LayoutDashboard, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { auth } from '../../lib/firebase';
 
@@ -50,8 +50,10 @@ const Navbar: React.FC = () => {
             ) : (
               /* LOGGED IN STATE */
               <>
+                <Link to="/resources" className="text-gray-600 hover:text-brand-dark font-medium">Resources</Link>
+                
                 <Link to={dashboardLink} className="text-gray-600 hover:text-brand-dark font-medium flex items-center gap-2">
-                  <LayoutDashboard className="w-4 h-4" /> My Dashboard
+                  <LayoutDashboard className="w-4 h-4" /> Dashboard
                 </Link>
 
                 {/* Dynamic Action Button based on Role */}
@@ -60,13 +62,20 @@ const Navbar: React.FC = () => {
                     <Plus className="w-4 h-4 text-brand-orange" /> New Shipment
                   </Link>
                 ) : (
-                  <Link to="/carrier" className="text-gray-600 hover:text-brand-dark font-medium flex items-center gap-2">
-                     <Search className="w-4 h-4 text-brand-green" /> Find Loads
-                  </Link>
+                  <>
+                    <Link to="/carrier" className="text-gray-600 hover:text-brand-dark font-medium flex items-center gap-2">
+                        <Search className="w-4 h-4 text-brand-green" /> Find Loads
+                    </Link>
+                    {/* ADDED MY TRIPS LINK */}
+                    <Link to="/carrier/trips" className="text-gray-600 hover:text-brand-dark font-medium flex items-center gap-2">
+                        <Truck className="w-4 h-4 text-brand-orange" /> My Trips
+                    </Link>
+                  </>
                 )}
+
                 {userRole === 'carrier' && (
                   <Link to="/carrier/settings" className="text-gray-600 hover:text-brand-dark font-medium flex items-center gap-2">
-                    Settings
+                    <Settings className="w-4 h-4" /> Settings
                   </Link>
                 )}
 
@@ -101,16 +110,23 @@ const Navbar: React.FC = () => {
                <>
                  <Link to="/login?type=business" className="block py-2 text-base font-medium text-gray-700">For Business</Link>
                  <Link to="/login?type=carrier" className="block py-2 text-base font-medium text-gray-700">For Carriers</Link>
+                 <Link to="/resources" className="block py-2 text-base font-medium text-gray-700">Resources</Link>
                  <Link to="/pricing" className="block py-2 text-base font-medium text-gray-700">Pricing</Link>
                  <Link to="/login" className="block w-full text-center mt-4 bg-brand-dark text-white py-3 rounded-lg font-bold">Login</Link>
                </>
              ) : (
                <>
                  <Link to={dashboardLink} className="block py-2 text-base font-bold text-brand-dark">My Dashboard</Link>
+                 <Link to="/resources" className="block py-2 text-base font-medium text-gray-700">Resources</Link>
+                 
                  {userRole === 'business' ? (
                     <Link to="/business/create" className="block py-2 text-base font-medium text-gray-600">Create New Shipment</Link>
                  ) : (
-                    <Link to="/carrier" className="block py-2 text-base font-medium text-gray-600">Find Loads</Link>
+                    <>
+                      <Link to="/carrier" className="block py-2 text-base font-medium text-gray-600">Find Loads</Link>
+                      <Link to="/carrier/trips" className="block py-2 text-base font-medium text-gray-600">My Trips</Link>
+                      <Link to="/carrier/settings" className="block py-2 text-base font-medium text-gray-600">Settings</Link>
+                    </>
                  )}
                  <button onClick={handleLogout} className="block w-full text-left py-2 text-base font-medium text-red-500 mt-2 border-t border-gray-100">
                     Logout

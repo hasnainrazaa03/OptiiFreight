@@ -19,6 +19,7 @@ import Payment from './components/business/Payment';               // Ensure you
 import CarrierDashboard from './components/carrier/CarrierDashboard';
 import CarrierOnboarding from './components/carrier/CarrierOnboarding';
 import CarrierSettings from './components/carrier/CarrierSettings';
+import MyTrips from './components/carrier/MyTrips';
 
 // Import Shared
 import Navbar from './components/shared/Navbar';
@@ -51,6 +52,7 @@ const App: React.FC = () => {
               <Route path="/carrier" element={<CarrierDashboard />} />
               <Route path="/carrier/onboarding" element={<CarrierOnboarding />} />
               <Route path="/carrier/settings" element={<CarrierSettings />} />
+              <Route path="/carrier/trips" element={<MyTrips />} />
             </Routes>
           </main>
           <OptimizationAssistant />
