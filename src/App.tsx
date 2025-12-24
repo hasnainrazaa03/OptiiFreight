@@ -12,10 +12,13 @@ import Pricing from './pages/Pricing';         // Move existing Pricing componen
 import BusinessDashboard from './components/business/BusinessDashboard';
 import CreateShipment from './components/business/CreateShipment';
 import TruckSelection from './components/business/TruckSelection'; // Ensure you moved this
+import TruckDetails from './components/business/TruckDetails';
 import Payment from './components/business/Payment';               // Ensure you moved this
 
 // Import Carrier Components
 import CarrierDashboard from './components/carrier/CarrierDashboard';
+import CarrierOnboarding from './components/carrier/CarrierOnboarding';
+import CarrierSettings from './components/carrier/CarrierSettings';
 
 // Import Shared
 import Navbar from './components/shared/Navbar';
@@ -41,10 +44,13 @@ const App: React.FC = () => {
               <Route path="/business" element={<BusinessDashboard />} />
               <Route path="/business/create" element={<CreateShipment />} />
               <Route path="/business/trucks" element={<TruckSelection />} />
+              <Route path="/business/truck-details" element={<TruckDetails />} />
               <Route path="/business/payment" element={<Payment />} />
               
               {/* Carrier Routes */}
               <Route path="/carrier" element={<CarrierDashboard />} />
+              <Route path="/carrier/onboarding" element={<CarrierOnboarding />} />
+              <Route path="/carrier/settings" element={<CarrierSettings />} />
             </Routes>
           </main>
           <OptimizationAssistant />

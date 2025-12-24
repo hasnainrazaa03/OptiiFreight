@@ -64,6 +64,11 @@ const Navbar: React.FC = () => {
                      <Search className="w-4 h-4 text-brand-green" /> Find Loads
                   </Link>
                 )}
+                {userRole === 'carrier' && (
+                  <Link to="/carrier/settings" className="text-gray-600 hover:text-brand-dark font-medium flex items-center gap-2">
+                    Settings
+                  </Link>
+                )}
 
                 <div className="h-6 w-px bg-gray-300 mx-2"></div>
 

@@ -20,12 +20,20 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   // Helper to handle success
-  const handleSuccess = () => {
-      // 1. TELL THE APP WHICH ROLE WE ARE
+ const handleSuccess = () => {
       setUserRole(activeTab);
 
-      // 2. Navigate
-      navigate(activeTab === 'business' ? '/business' : '/carrier');
+      // LOGIC CHANGE:
+      if (activeTab === 'carrier' && isSignUp) {
+          // If they just created an account as a carrier, send to profile setup
+          navigate('/carrier/onboarding');
+      } else if (activeTab === 'carrier') {
+          // If logging in, go to dashboard
+          navigate('/carrier');
+      } else {
+          // Business users go to dashboard (for now)
+          navigate('/business');
+      }
   };
 
   const handleAuth = async (e: React.FormEvent) => {
