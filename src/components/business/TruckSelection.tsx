@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Truck, Star } from 'lucide-react';
 import { collection, getDocs, query, where } from "firebase/firestore"; // Import Firestore
 import { db } from "../../lib/firebase";
+import { calculateSOP, QuoteResult } from '../../utils/pricingEngine';
 
 const TruckSelection: React.FC = () => {
   const navigate = useNavigate();
@@ -25,19 +26,39 @@ const TruckSelection: React.FC = () => {
         
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          const rate = data.baseRate || 2.0;
           
-          // REAL MATH: Miles * Truck Rate
-          const quote = Math.round(miles * rate);
+          // 1. SAFE PARSING: Ensure all numbers are actually numbers
+          const rateA = parseFloat(data.rateA || data.ratePerMile || '2.50');
+          const rateB = parseFloat(data.rateB || '1.85');
+          const rateC = parseFloat(data.rateC || '0.32');
+
+          const carrierRates = {
+              rateA: rateA,
+              rateB: rateB,
+              rateC: rateC
+          };
+
+          // Log the rates to see what the engine is using
+          // console.log(`Rates for ${data.name || data.companyName}:`, carrierRates);
+
+          const calculationData = {
+              distance: miles, // From your fixed distance calc
+              weight: parseFloat(shipmentData?.weight || '0'),
+              length: parseFloat(shipmentData?.length || '4'), 
+              width: parseFloat(shipmentData?.width || '4'),
+              height: parseFloat(shipmentData?.height || '4')
+          };
+
+          const quote: QuoteResult = calculateSOP(calculationData, carrierRates);
 
           fetchedTrucks.push({
             id: doc.id,
             ...data,
             // FIX NAME: Use companyName first
             name: data.companyName || data.name || "Unknown Carrier", 
-            ratePerMile: rate,
-            transitTime: `${Math.ceil(miles / 500)} Days`,
-            total: quote,
+            total: quote.finalCost,
+            transitTime: quote.transitTimeDisplay,
+            quoteDetails: quote,
             
             // Fix Rating Display
             rating: data.rating || 0,
@@ -48,7 +69,7 @@ const TruckSelection: React.FC = () => {
         });
         
         // SORTING: Highest score first
-        fetchedTrucks.sort((a, b) => b.matchScore - a.matchScore);
+        fetchedTrucks.sort((a, b) => a.total - b.total);
         
         setTrucks(fetchedTrucks);
       } catch (error) {
@@ -58,8 +79,8 @@ const TruckSelection: React.FC = () => {
       }
     };
 
-    fetchTrucks();
-  }, [miles]);
+    if (shipmentData) fetchTrucks();
+  }, [miles, shipmentData]);
 
   return (
     <div className="min-h-screen bg-brand-light p-4 sm:p-8">
@@ -83,7 +104,6 @@ const TruckSelection: React.FC = () => {
              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-orange"></div>
           </div>
         ) : trucks.length === 0 ? (
-          // --- NEW EMPTY STATE ---
           <div className="text-center py-20 bg-white rounded-xl border border-gray-100 shadow-sm">
              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Truck className="w-10 h-10 text-gray-300" />
@@ -118,7 +138,7 @@ const TruckSelection: React.FC = () => {
                     <h3 className="font-bold text-lg text-brand-dark">{truck.name}</h3>
                     <div className="flex items-center text-sm text-gray-600">
                       <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 mr-1" />
-                      <span>{truck.rating} • Verified Carrier</span>
+                      <span>{truck.rating > 0 ? truck.rating : 'New'} • Verified Carrier</span>
                     </div>
                   </div>
                 </div>
@@ -126,7 +146,7 @@ const TruckSelection: React.FC = () => {
                 <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4 text-center md:text-left">
                   <div>
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Rate</p>
-                    <p className="font-semibold text-gray-800">${truck.ratePerMile} / mile</p>
+                    <p className="font-semibold text-gray-800">${truck.rateA?.toFixed(2) || truck.ratePerMile} / mile</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Delivery</p>
@@ -143,7 +163,8 @@ const TruckSelection: React.FC = () => {
                       state: { 
                           truck, 
                           shipmentData, 
-                          total: truck.total 
+                          total: truck.total,
+                          quoteDetails: truck.quoteDetails // Pass the SOP details
                       } 
                   })}
                   className="bg-brand-orange hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors w-full md:w-auto"

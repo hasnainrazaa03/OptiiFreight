@@ -1,7 +1,5 @@
 // src/utils/distance.ts
 
-// 1. Mini Database of Coordinates (Mocking a real Geocoding API)
-// In a real app, you'd use Google Maps Geocoding API
 const zipCoords: Record<string, { lat: number; lng: number }> = {
   "10001": { lat: 40.7128, lng: -74.0060 }, // New York
   "90001": { lat: 34.0522, lng: -118.2437 }, // Los Angeles
@@ -9,12 +7,12 @@ const zipCoords: Record<string, { lat: number; lng: number }> = {
   "77001": { lat: 29.7604, lng: -95.3698 },  // Houston
   "33101": { lat: 25.7617, lng: -80.1918 },  // Miami
   "98101": { lat: 47.6062, lng: -122.3321 }, // Seattle
+  "07102": { lat: 40.7357, lng: -74.1724 },  // Newark (For short haul test)
   "default": { lat: 39.8283, lng: -98.5795 } // Center of US
 };
 
-// 2. The Haversine Formula (Calculates miles between two coords)
 const getDistanceFromLatLonInMiles = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-  const R = 3958.8; // Radius of the earth in miles
+  const R = 3958.8; 
   const dLat = deg2rad(lat2 - lat1);
   const dLon = deg2rad(lon2 - lon1);
   const a =
@@ -22,21 +20,28 @@ const getDistanceFromLatLonInMiles = (lat1: number, lon1: number, lat2: number, 
     Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c; // Distance in miles
-  return Math.round(d);
+  return Math.round(R * c);
 };
 
-const deg2rad = (deg: number) => {
-  return deg * (Math.PI / 180);
-};
+const deg2rad = (deg: number) => deg * (Math.PI / 180);
 
-// 3. The Public Function to use in your app
 export const calculateDistance = (originZip: string, destZip: string): number => {
-  const origin = zipCoords[originZip] || zipCoords["default"];
-  const dest = zipCoords[destZip] || zipCoords["default"];
+  // CLEAN INPUTS: Remove spaces
+  const cleanOrigin = originZip.trim();
+  const cleanDest = destZip.trim();
 
-  // If zips are unknown/same, return a default mock distance to prevent 0
-  if (origin === dest) return 500; 
+  const origin = zipCoords[cleanOrigin] || zipCoords["default"];
+  const dest = zipCoords[cleanDest] || zipCoords["default"];
 
-  return getDistanceFromLatLonInMiles(origin.lat, origin.lng, dest.lat, dest.lng);
+  // LOGGING FOR DEBUGGING
+  console.log(`Calculating Distance: ${cleanOrigin} -> ${cleanDest}`);
+  if (!zipCoords[cleanOrigin]) console.warn(`Origin Zip ${cleanOrigin} not found, using default.`);
+  if (!zipCoords[cleanDest]) console.warn(`Dest Zip ${cleanDest} not found, using default.`);
+
+  if (cleanOrigin === cleanDest) return 5; // Minimal distance for same zip
+
+  const miles = getDistanceFromLatLonInMiles(origin.lat, origin.lng, dest.lat, dest.lng);
+  console.log(`Result: ${miles} miles`);
+  
+  return miles;
 };

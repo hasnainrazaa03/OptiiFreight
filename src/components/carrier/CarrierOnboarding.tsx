@@ -16,12 +16,17 @@ const CarrierOnboarding: React.FC = () => {
     carrierType: 'Owner-Operator', // Default
     fleetSize: 1,
     equipmentType: 'Dry Van (53\')',
-    baseRate: '',
-    homeBaseZip: ''
+    homeBaseZip: '',
+    // 3 RATES
+    rateA: 2.50, // Per Mile
+    rateB: 1.85, // Per Cubic Foot
+    rateC: 0.32  // Per Pound
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Handle number inputs correctly
+    const value = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+    setFormData({ ...formData, [e.target.name]: value });
   };
 
   const handleSkip = async () => {
@@ -35,6 +40,8 @@ const CarrierOnboarding: React.FC = () => {
          companyName: 'Unregistered Carrier', // Placeholder
          verified: false,
          profileComplete: false, // Flag to check later
+         rating: 0,
+         reviews: 0,
          joinedAt: new Date().toISOString()
        });
        navigate('/carrier');
@@ -53,15 +60,15 @@ const CarrierOnboarding: React.FC = () => {
 
     try {
       // Create the Carrier Profile linked to their Auth UID
-      // We use setDoc with user.uid so the ID matches their login ID
       await setDoc(doc(db, "carriers", user.uid), {
         ...formData,
         uid: user.uid,
         email: user.email,
         verified: false, // Default to unverified until Admin checks DOT#
         rating: 0,
-        reviews: 0,     // New carriers start with 5 stars
+        reviews: 0,
         completedTrips: 0,
+        profileComplete: false, // Force them to settings for Payment/Docs
         joinedAt: new Date().toISOString()
       });
 
@@ -154,32 +161,45 @@ const CarrierOnboarding: React.FC = () => {
           {/* Location & Rates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Base Rate (Per Mile)</label>
-                <div className="relative">
-                   <span className="absolute left-3 top-2 text-gray-500">$</span>
-                   <input type="number" step="0.01" name="baseRate" value={formData.baseRate} onChange={handleChange} className="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-2" placeholder="2.00" />
-                </div>
-             </div>
-             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Home Base Zip</label>
                 <div className="relative">
                    <MapPin className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                    <input required name="homeBaseZip" value={formData.homeBaseZip} onChange={handleChange} className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2" placeholder="90001" />
                 </div>
              </div>
+             
+             {/* 3 RATES SECTION */}
+             <div className="col-span-2 border-t border-gray-100 pt-4 mt-2">
+                 <h3 className="text-sm font-bold text-gray-700 mb-3">Base Pricing (Defaults)</h3>
+                 <div className="grid grid-cols-3 gap-4">
+                    <div>
+                        <label className="text-xs text-gray-500 font-bold uppercase">Per Mile</label>
+                        <input type="number" step="0.01" name="rateA" value={formData.rateA} onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-2 py-1.5 mt-1" />
+                    </div>
+                    <div>
+                        <label className="text-xs text-gray-500 font-bold uppercase">Per ft³</label>
+                        <input type="number" step="0.01" name="rateB" value={formData.rateB} onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-2 py-1.5 mt-1" />
+                    </div>
+                    <div>
+                        <label className="text-xs text-gray-500 font-bold uppercase">Per lb</label>
+                        <input type="number" step="0.01" name="rateC" value={formData.rateC} onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-2 py-1.5 mt-1" />
+                    </div>
+                 </div>
+             </div>
           </div>
 
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-brand-dark text-white py-4 rounded-lg font-bold text-lg hover:bg-blue-900 transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-brand-dark text-white py-4 rounded-lg font-bold text-lg hover:bg-blue-900 transition-colors flex items-center justify-center gap-2 mt-6"
           >
             {loading ? 'Creating Profile...' : 'Complete Registration'} <ArrowRight className="w-5 h-5"/>
           </button>
+          
           <button 
             type="button"
             onClick={handleSkip}
-            className="w-full bg-white text-gray-500 py-4 rounded-lg font-medium hover:text-gray-800 transition-colors mt-2"
+            className="w-full bg-white text-gray-500 py-4 rounded-lg font-medium hover:text-gray-800 transition-colors mt-2 border border-transparent hover:border-gray-200"
           >
             I'll do this later (Skip)
           </button>
