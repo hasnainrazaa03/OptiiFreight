@@ -4,6 +4,8 @@ import { HashRouter, Routes, Route } from 'react-router-dom';
 // Import Pages
 import Login from './pages/Login';
 import Resources from './pages/Resources';
+import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import LandingPage from './pages/LandingPage'; // You need to create this from the code you had in App.tsx
 import AboutUs from './pages/AboutUs';         // Move existing AboutUs component to src/pages/AboutUs.tsx
 import Pricing from './pages/Pricing';         // Move existing Pricing component to src/pages/Pricing.tsx
@@ -40,6 +42,8 @@ const App: React.FC = () => {
               <Route path="/about" element={<AboutUs />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/resources" element={<Resources />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
               
               {/* Business Routes */}
               <Route path="/business" element={<BusinessDashboard />} />
